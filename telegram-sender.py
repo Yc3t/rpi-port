@@ -23,7 +23,7 @@ if not TOKEN:
 
 async def start_command(update: Update, context:ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    await update.message.reply_text(f'🛥️ Hello, {user.first_name}. I am the port lord.')
+    await update.message.reply_text(f'🛥️ Hello, {user.first_name}!')
 
 async def help_command(update:Update, context:ContextTypes.DEFAULT_TYPE):
     help_text = """
