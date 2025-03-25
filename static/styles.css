@@ -1,0 +1,349 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: 16px;
+}
+
+#map {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: calc(100% - 300px); /* Ancho total menos el ancho de la barra lateral */
+    height: 100vh;
+    box-sizing: border-box;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.leaflet-tile { 
+    opacity: 1.0 !important; /* Fuerza la opacidad completa */ 
+}
+
+
+#sidebar {
+    position: absolute;
+    top: 0;
+    right: 0; /* Mueve la barra al lado derecho */
+    width: 210px;
+    min-width: 200px;
+    max-width: 300px;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 20px;
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5); /* Ajuste de sombra */
+    z-index: 1000; /* Asegura que la barra lateral esté sobre el mapa */
+    overflow-y: auto;  /*Para scroll si la barra tienen demasiado contenido*/
+}
+
+#myChart {
+    position: absolute;
+    top: 390px;
+    left: 1rem;
+    width: 330px;
+    background-color: rgba(255, 255, 255, 0.9);
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    border-radius: 20px;
+    display: none;
+}
+
+.layer-section {
+    margin-top: 20px;
+    background-color: white;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+}
+
+.layer-section h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.layer-section div {
+    margin-bottom: 5px;
+}
+
+.layer-section input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+#layer-select {
+    width: 100%;
+    padding: 5px;
+    margin-top: 5px;
+    border-radius: 5px;
+}
+
+#raster-checkboxes {
+    margin-top: 10px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+#raster-checkboxes div {
+    margin-bottom: 5px;
+}
+#raster-checkboxes label {
+    margin-left: 5px;
+}
+
+#form-container, #plume-form-container {
+    position: absolute;
+    top: 80px;
+    left: 20px;
+    width: 515px;
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 15px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    border-radius: 10px;
+    display: none;
+}
+
+#form-container h3, #plume-form-container h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.form-row {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.form-row label {
+    width: 40%;
+    margin-left: 10px;
+}
+
+.form-row input {
+    width: 200px; /* Ancho fijo para los inputs */
+    padding: 5px;
+    box-sizing: border-box;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+.form-row .unit {
+    width: 50px; /* Ancho fijo para las unidades */
+    padding: 5px;
+    padding-left: 10px;
+    border-left: none;
+    border-radius: 0 5px 5px 0;
+    text-align: center;
+    font-size: 0.8em;
+    color: #666;
+}
+
+.button-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15px;
+}
+
+.button-container button {
+    flex: 1;
+    padding: 5px 10px;
+    margin: 0 5px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.button-container button:hover {
+    background-color: #45a049;
+}
+
+
+#form-container, #myChart, #plume-form-container {
+    transition: opacity 0.3s ease-out;
+    transition: opacity 0.3s ease-out;
+}
+
+.hiding {
+    opacity: 0;
+}
+
+.leaflet-bottom.leaflet-right .leaflet-control-scale {
+    margin-bottom: 10px;
+    margin-right: 10px;
+    background-color: rgba(255, 255, 255, 0.7);
+    padding: 2px 5px;
+    border-radius: 5px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+}
+
+.leaflet-control-scale-line {
+    border-top: none;
+    color: #333;
+    line-height: 1.1;
+    padding: 2px 5px 1px;
+    font-size: 11px;
+    text-shadow: 1px 1px #fff;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.leaflet-control-scale-line:not(:first-child) {
+    border-top: 2px solid #777;
+    border-bottom: none;
+    margin-top: -2px;
+}
+
+.leaflet-control-scale-line:not(:first-child):not(:last-child) {
+    border-bottom: 2px solid #777;
+}
+
+
+.leaflet-control-elaborate-compass {
+    border: 2px solid rgba(0,0,0,0.2);
+    background-clip: padding-box;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+}
+
+.compass-label {
+    font-size: 12px;
+    font-weight: bold;
+    line-height: 20px;
+}
+
+.leaflet-control-north-arrow {
+    border: 2px solid rgba(0,0,0,0.2);
+    background-clip: padding-box;
+    border-radius: 4px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2px;
+}
+
+.north-arrow {
+    color: #333;
+}
+
+.north-label {
+    color: #333;
+}
+
+.legend {
+    line-height: 18px;
+    color: #555;
+    background: white;
+    padding: 6px 8px;
+    border-radius: 5px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    margin-right: 10px; /* Añade margen a la derecha */
+    margin-bottom: 30px; /* Añade margen en la parte inferior */
+    right: 100px;
+    top: 105px;
+}
+
+.legend h4 {
+    margin: 0 0 5px;
+    color: #777;
+}
+
+.horizontal-legend {
+    width: 250px; /* Ajusta este valor según tus necesidades */
+}
+
+.horizontal-legend .legend-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 5px;
+}
+
+.horizontal-legend .legend-bar {
+    height: 20px;
+    width: 180px; /* Ajusta este valor según tus necesidades */
+    margin: 0 10px;
+}
+
+.horizontal-legend .legend-label {
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.leaflet-control-layers {
+    background-color: white;
+    padding: 5px;
+    border-radius: 5px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+}
+
+.mode-selector {
+    margin-bottom: 20px;
+    background-color: white;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+}
+
+.mode-selector h4 {
+    display: block;
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.mode-selector select {
+    width: 100%;
+    padding: 5px;
+    border-radius: 5px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+}
+
+.flow-path {
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.2));
+}
+
+.layer-section button {
+    flex: 1;
+    padding: 5px 10px;
+    margin: 0 5px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.layer-section .button-container {
+    text-align: center;
+}
+
+.layer-section button:hover {
+background-color: grey;
+}
+
+.popup-button {
+    flex: 1;
+    padding: 5px 10px;
+    margin: 0 5px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    background-color: #4CAF50; /* Color de fondo verde */
+    color: white;
+}
+
+.popup-button:hover {
+    background-color: #45a049; /* Color de fondo verde más oscuro al pasar el mouse */
+}
+
+.popup-button.remove-plume {
+    background-color: #f44336; /* Color de fondo rojo para el botón de eliminar */
+}
+
+.popup-button.remove-plume:hover {
+    background-color: #da190b; /* Color de fondo rojo más oscuro al pasar el mouse */
+}

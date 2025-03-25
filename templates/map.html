@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Maps Visor</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="../static/styles.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/georaster@1.6.0/dist/georaster.browser.bundle.min.js"></script>
+    <script src="https://unpkg.com/georaster-layer-for-leaflet@3.10.0/dist/georaster-layer-for-leaflet.min.js"></script>
+    <script src="https://unpkg.com/@mapbox/leaflet-pip@1.1.0/leaflet-pip.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://unpkg.com/leaflet-geometryutil@0.9.3/src/leaflet.geometryutil.js"></script>
+</head>
+<body>
+    <!-- Formulario para calcular el TCC -->
+    <div id="form-container" style="display: none;">
+        <form id="data-form">
+            <h3>Enter the data to calculate the TCC</h3>
+            <div class="form-row">
+                <label for="darcy_vel">Darcy Velocity:</label>
+                <input type="number" id="darcy_vel" name="darcy_vel" step="any" min="1e-8" max="1e-5" data-layer="">
+                <span class="unit">m/s</span>
+            </div>
+            <div class="form-row">
+                <label for="therm_cond">Thermal Conductivity:</label>
+                <input type="number" id="therm_cond" name="therm_cond" step="any" required>
+                <span class="unit">W/m K</span>
+            </div>
+            <div class="form-row">
+                <label for="thresh_temp">Temp. Threshold:</label>
+                <input type="number" id="thresh_temp" name="thresh_temp" step="any" required>
+                <span class="unit">K</span>
+            </div>
+            <div class="form-row">
+                <label for="heat_cap">Heat Capacity:</label>
+                <input type="number" id="heat_cap" name="heat_cap" step="any" required>
+                <span class="unit">J/m³ K</span>
+            </div>
+            <div class="form-row">
+                <label for="oper_time">Operation Time:</label>
+                <input type="number" id="oper_time" name="oper_time" step="any" required>
+                <span class="unit">Months</span>
+            </div>
+            <div class="button-container">
+                <button type="submit">Calculate</button>
+                <button type="reset">Clear</button>
+                <button type="button" id="close-form">Close</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Formulario para calcular la pluma -->
+    <div id="plume-form-container" style="display: none;">
+        <form id="plume-data-form">
+            <h3>Enter the data to calculate the plume</h3>
+            <div class="form-row">
+                <label for="plume_darcy_vel">Darcy Velocity:</label>
+                <input type="number" id="plume_darcy_vel" name="plume_darcy_vel" step="any" min="1e-8" max="1e-5" data-layer="">
+                <span class="unit">m/s</span>
+            </div>
+            <div class="form-row">
+                <label for="plume_heat_rate">Heat Rate:</label>
+                <input type="number" id="plume_heat_rate" name="plume_heat_rate" step="any" required>
+                <span class="unit">W/m</span>
+            </div>
+            <div class="form-row">
+                <label for="plume_therm_cond">Thermal Conductivity:</label>
+                <input type="number" id="plume_therm_cond" name="plume_therm_cond" step="any" required>
+                <span class="unit">W/m K</span>
+            </div>
+            <div class="form-row">
+                <label for="plume_thresh_temp">Temp. Threshold:</label>
+                <input type="number" id="plume_thresh_temp" name="plume_thresh_temp" step="any" required>
+                <span class="unit">K</span>
+            </div>
+            <div class="form-row">
+                <label for="plume_heat_cap">Heat Capacity:</label>
+                <input type="number" id="plume_heat_cap" name="plume_heat_cap" step="any" required>
+                <span class="unit">J/m³ K</span>
+            </div>
+            <div class="form-row">
+                <label for="plume_oper_time">Operation Time:</label>
+                <input type="number" id="plume_oper_time" name="plume_oper_time" step="any" required>
+                <span class="unit">Months</span>
+            </div>
+            <div class="button-container">
+                <button type="submit">Calculate</button>
+                <button type="reset">Clear</button>
+                <button type="button" id="close-plume-form">Close</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Contenedor para el gráfico -->
+    <div id="myChart"></div>
+
+    <!-- Contenedor para el mapa -->
+    <div id="map"></div>
+
+    <!-- Contenedor de la barra lateral -->
+    <div id="sidebar">
+        <h2>Map Options</h2>
+        <div class="mode-selector">
+            <h4 for="mode-select">Mode</h4>
+            <select id="mode-select">
+                <option value="tiger">TCC</option>
+                <option value="rester">Rester</option>
+            </select>
+        </div>
+        <div class="layer-section">
+            <h4>Layer selector</h4>
+            <select id="layer-select">
+                <!-- Las opciones se cargarán dinámicamente -->
+            </select>
+        </div>
+        <div id="raster-checkboxes"></div>
+        <div class="layer-section">
+            <h4>Additional Layers</h4>
+            <div>
+                <input type="checkbox" id="catastro-checkbox" name="catastro-checkbox">
+                <label for="catastro-checkbox">Cadastre</label>
+            </div>
+        </div>
+        <div id="extra-options"></div>
+        <div class="layer-section">
+            <h4> Extra Options </h4>
+            <div class="button-container">
+                <button id="save-all-plumes2">Save  All Plumes</button>
+                <button id="delete-all-plumes2">Delete All Plumes</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Inicialización del mapa
+        var map = L.map('map', {
+            zoom: 10,
+            zoomControl: false // Desactivamos el control de zoom predeterminado
+        });
+
+        // Añadimos una capa base de OpenStreetMap
+        var baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Añadimos el control de zoom en la esquina superior derecha
+        L.control.zoom({
+            position: 'topright'
+        }).addTo(map);
+
+        // Añadimos la escala doble en la esquina inferior derecha
+        L.control.scale({
+            metric: true,
+            imperial: true,
+            position: 'bottomright'
+        }).addTo(map);
+
+        // URL del WMS catastral
+        var wmsLayer = L.tileLayer.wms('https://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx', {
+            layers: 'Catastro',
+            format: 'image/png',
+            transparent: true,
+            version: '1.1.1',
+            srs: 'EPSG:4326',
+            opacity: 1.0, // Ajuste la opacidad para mejorar la superposición
+            attribution: '© Catastro'
+        });
+
+        // Añadimos control de capas
+        var baseLayers = {
+            "Mapa Base": baseLayer
+        };
+
+        var overlays = {
+            "Capa Catastral": wmsLayer
+        };
+
+        // Creamos el control con opciones personalizadas
+        var layerControl = L.control.layers(baseLayers, overlays, {
+            collapsed: true,     // El control estará colapsado por defecto
+            position: 'topright' // Posición del control
+        }).addTo(map);
+
+        // Añadimos estilos personalizados para hacer el control más pequeño
+        var style = document.createElement('style');
+        style.type = 'text/css';
+        style.innerHTML = `
+            .leaflet-control-layers {
+                font-size: 11px;         /* Reduce el tamaño de la fuente */
+                line-height: 1.2;        /* Reduce el espacio entre líneas */
+            }
+            .leaflet-control-layers-toggle {
+                width: 20px !important;  /* Reduce el tamaño del icono del control */
+                height: 20px !important;
+            }
+            .leaflet-control-layers-expanded {
+                padding: 4px 6px;        /* Reduce el padding del panel expandido */
+                max-width: 150px;        /* Reduce el ancho máximo del panel */
+            }
+        `;
+        document.getElementsByTagName('head')[0].appendChild(style);
+
+        // Eventos para el seguimiento de la carga de las teselas
+        wmsLayer.on('tileloadstart', function(event) {
+            console.log('Cargando:', event.tile);
+        });
+
+        wmsLayer.on('tileload', function(event) {
+            console.log('Cargado:', event.tile);
+            event.tile.style.opacity = 1.0;
+        });
+
+        wmsLayer.on('tileerror', function(event) {
+            console.log('Error de carga:', event.tile);
+        });
+
+
+        // Variables globales para manejar que visualizamos
+        var drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+        var isFormVisible = false;
+        var isDeleteMode = false;
+        var isDrawingMode = false;
+
+        // Variable que nos permite añadir los controles de medidas
+        var drawOptions = {
+            position: 'topright',
+            draw: {
+                polyline: {
+                    shapeOptions: {
+                        color: 'blue',
+                        weight: 3
+                    },
+                    metric: true
+                },
+                polygon: {
+                    allowIntersection: false,
+                    drawError: {
+                        color: '#e1e100',
+                        message: '<strong>Oh snap!<strong> you can\'t draw that!'
+                    },
+                    shapeOptions: {
+                        color: '#bada55'
+                    }
+                },
+                circle: {
+                    shapeOptions: {
+                        color: '#662d91'
+                    }
+                },
+                rectangle: {
+                    shapeOptions: {
+                        color: '#ffd400'
+                    }
+                },
+                marker: false,
+                circlemarker: false
+            },
+            
+            edit: {
+                featureGroup: drawnItems,
+                remove: true
+            }
+        };
+
+        // Variable que nos permite añadir los controles de medidas
+        var drawControl = new L.Control.Draw(drawOptions);
+        map.addControl(drawControl);
+
+        // Evento para cuando estamos dibujando
+        map.on(L.Draw.Event.CREATED, function (e) {
+            var type = e.layerType,
+                layer = e.layer;
+        
+            drawnItems.addLayer(layer);
+        
+            updateShapeInfo(layer);
+        
+            layer.on('click', function(e) {
+                if (isDeleteMode || isDrawingMode) return; // No hacer nada si estamos en modo de borrado
+        
+                if (selectedShape) {
+                    selectedShape.setStyle({color: selectedShape.options.originalColor});
+                }
+                selectedShape = layerr
+                updateShapeInfo(layer);
+                layer.openPopup(); // Abrir el popup manualmente
+            });
+        });
+        
+        // Evento para cuando estamos editando lo dibujado
+        map.on(L.Draw.Event.EDITED, function (e) {
+            var layers = e.layers;
+            layers.eachLayer(function (layer) {
+                updateShapeInfo(layer);
+            });
+        });
+        
+        // Función para calcular info de lo dibujado
+        function updateShapeInfo(layer) {
+            if (isDeleteMode) return; // No hacer nada si estamos en modo de borrado
+        
+            var popupContent = '';
+            if (layer instanceof L.Polyline && !(layer instanceof L.Polygon)) {
+                var distance = calculateDistance(layer);
+                popupContent = 'Distancia: ' + distance.toFixed(2) + ' m';
+            } else if (layer instanceof L.Polygon) {
+                var area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+                popupContent = 'Área: ' + area.toFixed(2) + ' m²';
+            } else if (layer instanceof L.Circle) {
+                var radius = layer.getRadius();
+                var area = Math.PI * radius * radius;
+                popupContent = 'Radio: ' + radius.toFixed(2) + ' m<br>Área: ' + area.toFixed(2) + ' m²';
+            } else if (layer instanceof L.Rectangle) {
+                var bounds = layer.getBounds();
+                var area = L.GeometryUtil.geodesicArea(layer.getLatLngs()[0]);
+                popupContent = 'Área: ' + area.toFixed(2) + ' m²';
+            }
+        
+            layer.bindPopup(popupContent);
+
+        }
+
+        // Evento para cuando estamos borrando lo dibujado
+        map.on(L.Draw.Event.DELETED, function (e) {
+            var layers = e.layers;
+            isDeleteMode = true;
+            layers.eachLayer(function (layer) {
+                drawnItems.removeLayer(layer);
+            });
+            isDeleteMode = false;
+        });
+
+
+       // Comprobaciones para no superpones modos entre sí 
+        map.on('draw:drawstart', function() {
+            isDrawingMode = true;
+        });
+
+        map.on('draw:drawstop', function() {
+            setTimeout(function() {
+                isDrawingMode = false;
+            }, 300);
+        });
+
+        map.on('draw:editstart', function() {
+            isDrawingMode = true;
+        });
+
+        map.on('draw:editstop', function() {
+            isDrawingMode = false;
+        });
+
+        map.on('draw:deletestart', function() {
+            isDeleteMode = true;
+            isDrawingMode = true;
+        });
+        
+        map.on('draw:deletestop', function() {
+            isDeleteMode = false;
+            isDrawingMode = false;
+        });
+
+        // Función para calcular distancia euclidea entre dos puntos
+        function calculateDistance(layer) {
+            var distance = 0;
+            var latlngs = layer.getLatLngs();
+            for (var i = 1; i < latlngs.length; i++) {
+                distance += latlngs[i-1].distanceTo(latlngs[i]);
+            }
+            return distance;
+        }
+
+        // Cargamos y añadimos el shapefile del catastro
+        var catastroData = {{ catastro | tojson | safe }};
+        var catastroLayer = L.geoJSON(JSON.parse(catastroData), {
+            style: function(feature) {
+                return {
+                    weight: 2,
+                    opacity: 0.5,
+                    color: 'black',
+                };
+            }
+        });
+
+        // Añadimos evento al checkbox del catastro
+        document.getElementById('catastro-checkbox').addEventListener('change', function(e) {
+            if (this.checked) {
+                catastroLayer.addTo(map);
+            } else {
+                map.removeLayer(catastroLayer);
+            }
+        });
+
+        // Añadimos la capa base de OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Cargamos y añadimos el shapefile
+        var gdf = {{ gdf | tojson | safe }};
+        var geoJsonLayer = L.geoJSON(JSON.parse(gdf), {
+            style: function(feature) {
+                return {
+                    weight: 2,
+                    opacity: 0.5,
+                    color: 'black',
+                    fillOpacity: 0
+                };
+            }
+        }).addTo(map);
+
+        // Obtenemos los límites del shapefile
+        var bounds = geoJsonLayer.getBounds();
+
+        // Calculamos el padding
+        var leftPadding = 350; // Ancho del espacio para el formulario y la gráfica
+        var paddingTopLeft = [leftPadding, 0];
+        var paddingBottomRight = [0, 0];
+
+        // Ajustamos la vista del mapa con los límites del shapefile y el padding
+        map.fitBounds(bounds, {
+            paddingTopLeft: paddingTopLeft,
+            paddingBottomRight: paddingBottomRight,
+            animate: false // Sin animación para la carga inicial
+        });
+
+        var isFormGenerated = false;
+        var mode = document.getElementById('mode-select').value;
+
+        // Función para manejar el cambio de modo
+        function handleModeChange() {
+            mode = document.getElementById('mode-select').value;
+            console.log("Modo cambiado a:", mode);
+            setupFormHandlers();
+        }
+
+        // Función para configurar los manejadores de eventos de los formularios
+        function setupFormHandlers() {
+            if (mode === 'tiger') {
+                document.getElementById('plume-form-container').style.display = 'none';
+                document.getElementById('data-form').onsubmit = handleTigerFormSubmit;
+            } else if (mode === 'rester') {
+                document.getElementById('form-container').style.display = 'none';
+                document.getElementById('myChart').style.display = 'none';
+                document.getElementById('plume-data-form').onsubmit = handlePlumerFormSubmit;
+            }
+        }
+
+        // Manejador para el formulario TCC (tiger)
+        function handleTigerFormSubmit(event) {
+            event.preventDefault();
+            var selectedLayer = document.getElementById('layer-select').value;
+            var darcyVelInput = document.getElementById('darcy_vel');
+
+            if ((selectedLayer === 'U1' || selectedLayer === 'U3') && !darcyVelInput.value) {
+                alert('Darcy Velocity is required for aquifer layers (U1 and U3)');
+                return;
+            }
+                  
+            // Realizar la petición al servidor
+            fetch('/map/click', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    lon: clickedLon, 
+                    lat: clickedLat, 
+                    layer: selectedLayer,
+                    darcy_vel: parseFloat(document.getElementById('darcy_vel').value),
+                    therm_cond: parseFloat(document.getElementById('therm_cond').value),
+                    thresh_temp: parseFloat(document.getElementById('thresh_temp').value),
+                    heat_cap: parseFloat(document.getElementById('heat_cap').value),
+                    oper_time: parseFloat(document.getElementById('oper_time').value),
+                    mode: document.getElementById('mode-select').value,
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    try {
+                        var k = data.parameters.k;
+                        var pc = data.parameters.pc;
+                        var u = data.parameters.u;
+                        var tiempo = data.parameters.Tiempo;
+                        var incT = data.parameters.IncT;
+                        var title_graph = data.title;
+                        var layout = {
+                            width: 550,
+                            height: 380,
+                            title: {
+                                text: `${data.parameters.title ? data.parameters.title : 'N/A'}`,
+                                xref: 'paper',
+                                x: 0,
+                                xanchor: 'left',
+                                font: {
+                                    size: 20
+                                }
+                            },
+                            xaxis: {
+                                title: {
+                                    text: 'Distance from BHE in m',
+                                    standoff: 35
+                                }
+                            },
+                            yaxis: {
+                                title: {
+                                    text: 'SGP in W/m',
+                                    standoff: 5
+                                },
+                                range:  [0, 100]
+                            },
+                            margin: {l: 50, r: 20, t: 50, b: 70},
+                            legend: {
+                                font: {
+                                    size: 10
+                                },
+                                bgcolor: 'rgba(255,255,255,0.9)',
+                                bordercolor: 'rgba(0,0,0,0.1)',
+                                borderwidth: 1,
+                                xanchor: 'right',
+                                x: 1,
+                                yanchor: 'top',
+                                y: 1
+                            },
+                            annotations: [
+                                {
+                                    xref: 'paper',
+                                    yref: 'paper',
+                                    x: 1,
+                                    y: 0.62,
+                                    xanchor: 'right',
+                                    yanchor: 'top',
+                                    text: `k: ${data.parameters.k ? data.parameters.k.toFixed(4) : 'N/A'} W/m·K<br>` +
+                                            `pc: ${data.parameters.pc ? data.parameters.pc.toExponential(4) : 'N/A'} J/m³·K<br>` +
+                                            `Darcy vel: ${data.parameters.u ? data.parameters.u.toExponential(4) : 'N/A'} m/s<br>` +
+                                            `Operation time: ${data.parameters.Tiempo ? data.parameters.Tiempo : 'N/A'} months<br>` +
+                                            `Temperature: ${data.parameters.IncT ? data.parameters.IncT.toFixed(2) : 'N/A'} K`,
+                                    showarrow: false,
+                                    font: {
+                                        size: 10
+                                    },
+                                    align: 'right',
+                                    bgcolor: 'rgba(255,255,255,0.9)',
+                                    bordercolor: 'rgba(0,0,0,0.1)',
+                                    borderwidth: 1,
+                                    borderpad: 4
+                                },
+                                {
+                                    xref: 'paper',
+                                    yref: 'paper',
+                                    x: -0.02,  // 5% desde la izquierda
+                                    y: -0.17,  // 5% desde abajo
+                                    xanchor: 'left',
+                                    yanchor: 'center',
+                                    text: `Lon: ${data.parameters.x ? data.parameters.x.toFixed(8) : 'N/A'}   Lat: ${data.parameters.y ? data.parameters.y.toFixed(8) : 'N/A'}`,
+                                    showarrow: false,
+                                    font: {
+                                        size: 10
+                                    },
+                                    align: 'left',
+                                    bgcolor: 'rgba(255,255,255,0.9)',
+                                    bordercolor: 'rgba(0,0,0,0.1)',
+                                    borderwidth: 1,
+                                    borderpad: 4
+                                }
+                            ]
+                        };
+                
+                        var config = {
+                            responsive: true,
+                            displayModeBar: true, 
+                            modeBarButtonsToRemove: ['autoScale2d'],
+                            toImageButtonOptions: {
+                                format: 'png',
+                                filename: data.parameters.title,
+                                height: 500,
+                                width: 700,
+                                scale: 5 // Aumentar para mejor resolución
+                            },
+                            displaylogo: false
+                        };
+                
+                        Plotly.newPlot('myChart', data.plotly_data.data, layout, config)
+                            .then(() => {
+                                console.log('Gráfico creado con éxito');
+                                document.getElementById('myChart').style.display = 'block';
+                            })
+                            .catch(err => console.error('Error al crear el gráfico:', err));
+                    } catch (err) {
+                        console.error('Error al procesar los datos del grfico:', err);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error en la solicitud:', error);
+            });
+        }
+
+        // Variables globales usadas para la pluma y linea de flujo
+        let flowPathLayer = null;
+        let plumeLayer = null;
+        let isCalculating = false;
+        let plumeLayers = {};
+
+        // Manejador para el formulario de pluma (rester)
+        async function handlePlumerFormSubmit(event) {
+            event.preventDefault();
+            isCalculating = true; // Indicar que se está calculando
+            map.dragging.disable(); // Deshabilitar la interacción con el mapa
+            
+            // Obtener los datos del formulario
+            const formData = {
+                lon: clickedLon,
+                lat: clickedLat,
+                layer: document.getElementById('layer-select').value,
+                darcy_vel: document.getElementById('plume_darcy_vel').value,
+                heat_rate: document.getElementById('plume_heat_rate').value,
+                therm_cond: document.getElementById('plume_therm_cond').value,
+                thresh_temp: document.getElementById('plume_thresh_temp').value,
+                heat_cap: document.getElementById('plume_heat_cap').value,
+                oper_time: document.getElementById('plume_oper_time').value,
+                mode: document.getElementById('mode-select').value
+            };
+
+            // Realizar la petición al servidor
+            fetch('/map/click', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log('Resultado recibido:', result);
+                isCalculating = false; // Indicar que ya no se está calculando
+                map.dragging.enable(); // Habilitar la interacción con el mapa
+
+                // Dibujar la línea de flujo si existe
+               /* if (result.flowPath && result.flowPath.geometry) {
+                    flowPathLayer = L.geoJSON(result.flowPath, {
+                        style: {
+                            color: '#2196F3',         
+                            weight: 3,                
+                            opacity: 0.8,             
+                            lineCap: 'round',         
+                            lineJoin: 'round',        
+                            smoothFactor: 0.3,        
+                            dashArray: null,          
+                            className: 'flow-path'    
+                        }
+                    }).addTo(map);
+                }*/
+
+
+                // Cuando creamos una nueva pluma
+                if (result.plume && result.plume.features) {
+                    // Generar un ID único para esta pluma
+                    const plumeId = 'plume_' + Date.now();
+
+                    // Crear una nueva capa para esta pluma específica
+                    const plumeLayer = L.featureGroup().addTo(map);
+
+                    // Almacenar la capa en nuestro objeto de plumas
+                    plumeLayers[plumeId] = plumeLayer;
+
+                    // Crear el popup content
+                    const popupContent = document.createElement('div');
+                    const plumeFeature = result.plume.features.find(f => f.properties.feature_type === "plume");
+                    const properties = plumeFeature.properties;
+
+                    popupContent.innerHTML = `
+                        <h3>Plume Information</h3>
+                        <p><strong>Major Axis:</strong> ${properties.major_axis.toFixed(2)} m</p>
+                        <p><strong>Minor Axis:</strong> ${properties.minor_axis.toFixed(2)} m</p>
+                        <p><strong>Probe:</strong> [${properties.center[0].toFixed(6)}, ${properties.center[1].toFixed(6)}]</p>
+                        <div style="text-align: center;">
+                            <button class="popup-button save-shapefile">Save as ShapeFile</button>
+                            <button class="popup-button remove-plume">Delete Plume</button>
+                        </div>
+                    `;
+
+                    // Agregar evento para el botón "Guardar como Shapefile"
+                    const saveButton = popupContent.querySelector('.save-shapefile');
+                    saveButton.onclick = function() {
+                        fetch('/save_shapefile', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(result.plume)
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok');
+                            }
+                            return response.blob();
+                        })
+                        .then(blob => {
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.style.display = 'none';
+                            a.href = url;
+                            a.download = 'pluma.zip';
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                        })
+                        .catch(error => {
+                            console.error('Error al descargar el archivo:', error);
+                        });
+                    };
+
+                    // Agregar evento para el botón "Eliminar Pluma"
+                    const removeButton = popupContent.querySelector('.remove-plume');
+                    removeButton.onclick = function() {
+                        map.removeLayer(plumeLayers[plumeId]);
+                        delete plumeLayers[plumeId];
+                        map.closePopup();
+                    };
+
+                    // Procesar cada feature
+                    result.plume.features.forEach(feature => {
+                        if (feature.properties.feature_type === "plume") {
+                            // Crear la pluma
+                            L.geoJSON(feature, {
+                                style: {
+                                    color: '#ff4444',
+                                    weight: 2,
+                                    fillColor: '#ff4444',
+                                    fillOpacity: 0.2,
+                                    smoothFactor: 0.1
+                                }
+                            }).addTo(plumeLayer);
+                        } else if (feature.properties.feature_type === "point") {
+                            // Crear el punto
+                            L.geoJSON(feature, {
+                                pointToLayer: function(feature, latlng) {
+                                    return L.circleMarker(latlng, {
+                                        radius: 2,
+                                        fillColor: "#000",
+                                        color: "#fff",
+                                        weight: 1,
+                                        opacity: 1,
+                                        fillOpacity: 1
+                                    });
+                                }
+                            }).addTo(plumeLayer);
+                        }
+                    });
+
+                    // Vincular el popup a la capa de la pluma
+                    plumeLayer.bindPopup(popupContent);
+
+                    // Centrar el mapa en la pluma
+                    map.fitBounds(plumeLayer.getBounds());
+                }
+
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al procesar la solicitud');
+                isCalculating = false; // Indicar que ya no se está calculando
+                map.dragging.enable(); // Habilitar la interacción con el mapa
+            });
+        }
+
+        // Evento para cuando queremos guardar todas las plumas
+        document.getElementById('save-all-plumes2').addEventListener('click', function() {
+            let allPlumes = {
+                type: "FeatureCollection",
+                features: []
+            };
+        
+            // Verificar si hay plumas para guardar
+            if (Object.keys(plumeLayers).length === 0) {
+                alert('No hay plumas visibles para guardar.');
+                return;
+            }
+        
+            // Recorrer las capas de plumas
+            Object.values(plumeLayers).forEach(layer => {
+                layer.eachLayer(function(featureLayer) {
+                    if (featureLayer.feature) {
+                        allPlumes.features.push(featureLayer.feature);
+                    } else if (featureLayer.toGeoJSON) {
+                        let geoJSON = featureLayer.toGeoJSON();
+                        if (geoJSON.type === "FeatureCollection") {
+                            // Si es una FeatureCollection, añadimos sus features individuales
+                            allPlumes.features = allPlumes.features.concat(geoJSON.features);
+                        } else {
+                            // Si es un Feature individual, lo añadimos directamente
+                            allPlumes.features.push(geoJSON);
+                        }
+                    }
+                });
+            });
+        
+            if (allPlumes.features.length === 0) {
+                alert('No se encontraron características de pluma para guardar.');
+                return;
+            }
+        
+            // Realizamos la petición al servidor
+            fetch('/save_all_plumes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(allPlumes)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`${response.status} ${response.statusText}: ${text}`);
+                    });
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'todas_las_plumas.zip';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                alert('Plumas guardadas exitosamente.');
+            })
+            .catch(error => {
+                console.error('Error detallado:', error);
+                alert(`Error al guardar las plumas: ${error.message}`);
+            });
+        });
+
+        // Agregar el event listener para el botón Delete All Plumes
+        document.getElementById('delete-all-plumes2').addEventListener('click', function() {
+            if (confirm('¿Está seguro de que desea eliminar todas las plumas?')) {
+                Object.values(plumeLayers).forEach(layer => {
+                    map.removeLayer(layer);
+                });
+                plumeLayers = {};
+                alert('Se han eliminado todas las plumas del mapa.');
+            }
+        });
+
+        // Agregar el evento de cambio al selector de modo
+        document.getElementById('mode-select').addEventListener('change', handleModeChange);
+
+        // Configurar los manejadores de eventos inicialmente
+        setupFormHandlers();
+
+        // Manejar clics en el mapa
+        map.on('click', function(e) {
+            if (isCalculating || isDrawingMode) return; // No hacer nada si se está calculando
+            var results = leafletPip.pointInLayer(e.latlng, geoJsonLayer);
+            var mode = document.getElementById('mode-select').value;
+            if (results.length > 0) {
+                if (mode === 'tiger') {
+                    // El clic está dentro del shapefile
+                    clickedLat = e.latlng.lat;
+                    clickedLon = e.latlng.lng;
+                    selectedLayer = document.getElementById('layer-select').value;
+                    
+                    // Obtener los valores iniciales
+                    fetch('/get_initial_values', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            lat: clickedLat,
+                            lon: clickedLon,
+                            layer: selectedLayer,
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Rellenar el formulario con los valores iniciales
+                        document.getElementById('darcy_vel').value = data.darcy_vel || '';
+                        document.getElementById('therm_cond').value = data.therm_cond || '';
+                        document.getElementById('thresh_temp').value = data.thresh_temp || '';
+                        document.getElementById('heat_cap').value = data.heat_cap || '';
+                        document.getElementById('oper_time').value = data.oper_time || '';
+                        
+                        // Mostrar el formulario
+                        document.getElementById('form-container').style.display = 'block';
+                        isFormGenerated = true;
+                        updateDarcyVelRequirement();
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error al obtener los valores iniciales');
+                    });
+                } else if (mode === 'rester') {
+                    // El clic está dentro del shapefile
+                    clickedLat = e.latlng.lat;
+                    clickedLon = e.latlng.lng;
+                    selectedLayer = document.getElementById('layer-select').value;
+                    
+                    // Obtener los valores iniciales
+                    fetch('/get_initial_values', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            lat: clickedLat,
+                            lon: clickedLon,
+                            layer: selectedLayer,
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Rellenar el formulario con los valores iniciales
+                        document.getElementById('plume_darcy_vel').value = data.darcy_vel || '';
+                        document.getElementById('plume_heat_rate').value = data.heat_rate || '';
+                        document.getElementById('plume_therm_cond').value = data.therm_cond || '';
+                        document.getElementById('plume_thresh_temp').value = data.thresh_temp || '';
+                        document.getElementById('plume_heat_cap').value = data.heat_cap || '';
+                        document.getElementById('plume_oper_time').value = data.oper_time || '';
+                        
+                        // Mostrar el formulario
+                        document.getElementById('plume-form-container').style.display = 'block';
+                        isFormVisible = true;
+                        isFormGenerated = true;
+                        
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error al obtener los valores iniciales');
+                    });
+                    
+                }
+            } else {
+                // El clic está fuera del shapefile
+                console.log('Clic fuera del shapefile');
+                // No hacemos nada con el formulario si ya está generado
+            }
+        });
+
+        // Función para obtener y crear checkboxes de rasters
+        function loadRasters(layer) {
+            // Eliminar todos los rasters existentes
+            for (let filename in rasterLayers) {
+                map.removeLayer(rasterLayers[filename]);
+                delete rasterLayers[filename];
+            }
+        
+            fetch(`/get_rasters/${layer}`)
+                .then(response => response.json())
+                .then(rasters => {
+                    const checkboxContainer = document.getElementById('raster-checkboxes');
+                    checkboxContainer.innerHTML = ''; // Limpiar checkboxes existentes
+                    
+                    rasters.forEach(raster => {
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.id = raster;
+                        checkbox.name = raster;
+                        checkbox.value = raster;
+        
+                        const label = document.createElement('label');
+                        label.htmlFor = raster;
+                        label.appendChild(document.createTextNode(raster));
+        
+                        const div = document.createElement('div');
+                        div.appendChild(checkbox);
+                        div.appendChild(label);
+        
+                        checkboxContainer.appendChild(div);
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Objeto para almacenar las capas de raster
+        var rasterLayers = {};
+
+        // Función para manejar el cambio en los checkboxes
+        function handleCheckboxChange(e) {
+            var checkbox = e.target;
+            var layerName = document.getElementById('layer-select').value;
+            var filename = checkbox.value;
+
+            if (checkbox.checked) {
+                console.log("Cargando raster:", layerName, filename);
+                fetch(`/get_raster/${layerName}/${filename}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            throw new Error(data.error);
+                        }
+
+                        var arrayBuffer = base64ToArrayBuffer(data.rasterData);
+                        return parseGeoraster(arrayBuffer).then(georaster => {
+                            return { georaster, bounds: data.bounds };
+                        });
+                    })
+                    .then(({ georaster, bounds }) => {
+                        var min = georaster.mins[0];
+                        var max = georaster.maxs[0];
+                        var noDataValue = georaster.noDataValue;
+
+                        // Calcular el rango real de valores
+                        var validValues = georaster.values[0].flat().filter(v => 
+                            v !== noDataValue && v !== null && v !== undefined && !isNaN(v) && isFinite(v)
+                        );
+
+                        var actualMin, actualMax;
+                        if (validValues.length > 0) {
+                            actualMin = Math.min(...validValues);
+                            actualMax = Math.max(...validValues);
+                        } else {
+                            actualMin = min;
+                            actualMax = max;
+                        }
+
+                        console.log("Rango real de valores:", actualMin, actualMax);
+
+                        var layer = new GeoRasterLayer({
+                            georaster: georaster,
+                            opacity: 0.7,
+                            resolution: 256,
+                            pixelValuesToColorFn: values => {
+                                var value = values[0];
+                                if (value === null || value === undefined || value === noDataValue || !isFinite(value)) {
+                                    return 'rgba(0,0,0,0)'; // Transparente para valores no data o inválidos
+                                }
+                                // Normalizar el valor entre 0 y 1
+                                var normalizedValue;
+                                if (actualMin === actualMax) {
+                                     // Si todos los valores son iguales, usar un valor fijo
+                                    normalizedValue = 0.5;
+                                } else {
+                                    normalizedValue = (value - actualMin) / (actualMax - actualMin);
+                                }
+                                normalizedValue = Math.max(0, Math.min(1, normalizedValue)); // Asegurar que esté entre 0 y 1
+                                    
+                                // Convertir el valor normalizado a un color en la escala azul-verde-amarillo-rojo
+                                var r, g, b;
+                                if (normalizedValue < 0.25) {
+                                    // Azul a verde
+                                    r = 0;
+                                    g = Math.round(255 * (normalizedValue * 4));
+                                    b = Math.round(255 * (1 - normalizedValue * 4));
+                                } else if (normalizedValue < 0.5) {
+                                    // Verde a amarillo
+                                    r = Math.round(255 * ((normalizedValue - 0.25) * 4));
+                                    g = 255;
+                                    b = 0;
+                                } else if (normalizedValue < 0.75) {
+                                    // Amarillo a rojo
+                                    r = 255;
+                                    g = Math.round(255 * (1 - (normalizedValue - 0.5) * 4));
+                                    b = 0;
+                                } else {
+                                    // Rojo
+                                    r = 255;
+                                    g = 0;
+                                    b = 0;
+                                }
+                                    
+                                return `rgb(${r},${g},${b})`;
+                            },
+                            bounds: [
+                                [bounds[1], bounds[0]],
+                                [bounds[3], bounds[2]]
+                            ]
+                        });
+
+                        layer.addTo(map);
+                        rasterLayers[filename] = layer;
+
+                    })
+                    .catch(error => {
+                        console.error("Error loading raster:", error);
+                        alert(`Error loading raster: ${error.message}`);
+                    });
+            } else {
+                // Si el checkbox está desmarcado, elimina el raster del mapa y la leyenda
+                if (rasterLayers[filename]) {
+                    map.removeLayer(rasterLayers[filename]);
+                    delete rasterLayers[filename];
+                }
+            }
+        }
+    
+        function base64ToArrayBuffer(base64) {
+            var binary_string = window.atob(base64);
+            var len = binary_string.length;
+            var bytes = new Uint8Array(len);
+            for (var i = 0; i < len; i++) {
+                bytes[i] = binary_string.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+        
+        // Agregar el evento de cambio a los checkboxes
+        document.getElementById('raster-checkboxes').addEventListener('change', handleCheckboxChange);
+
+        // Evento para manejar el cambio de capa
+        document.getElementById('layer-select').addEventListener('change', function(e) {
+            var selectedLayer = e.target.value;
+            console.log(`Capa seleccionada: ${selectedLayer}`);
+            loadRasters(selectedLayer);
+            updateDarcyVelRequirement();
+        });
+
+        // Función para cargar las capas en el selector
+        function loadLayers() {
+            if (document.getElementById('mode-select').value === 'tiger') {
+                fetch('/get_layers')
+                    .then(response => response.json())
+                    .then(layers => {
+                        const layerSelect = document.getElementById('layer-select');
+                        layerSelect.innerHTML = ''; // Limpiar opciones existentes
+                        
+                        layers.forEach(layer => {
+                            const option = document.createElement('option');
+                            option.value = layer.name;
+                            option.textContent = `${layer.name} - ${layer.tag}`;
+                            layerSelect.appendChild(option);
+                        });
+
+                        // Cargar los rasters para la primera capa
+                        if (layers.length > 0) {
+                            loadRasters(layers[0].name);
+                        }
+                    })
+                    .catch(error => console.error('Error al cargar las capas:', error));
+            }
+        }
+
+        // Llamar a la función para cargar las capas cuando se carga la página
+        loadLayers();
+
+        function closeFormAndChart() {
+            var formContainer = document.getElementById('form-container');
+            var chartDiv = document.getElementById('myChart');
+            
+            // Añadir clase para la animación de desvanecimiento
+            formContainer.classList.add('hiding');
+            if (chartDiv) chartDiv.classList.add('hiding');
+            
+            // Esperar a que termine la animación antes de ocultar completamente
+            setTimeout(() => {
+                formContainer.style.display = 'none';
+                formContainer.classList.remove('hiding');
+                
+                if (chartDiv) {
+                    Plotly.purge(chartDiv); // Esto elimina completamente la gráfica
+                    chartDiv.style.display = 'none';
+                    chartDiv.classList.remove('hiding');
+                }
+                
+                isFormVisible = false;
+                isDrawingMode = false;
+                isFormGenerated = false;
+            }, 300); // 300ms para coincidir con la duración de la transición CSS
+        }
+
+        // Agregar el evento para cerrar el formulario de TCC
+        document.getElementById('close-form').addEventListener('click', closeFormAndChart);
+
+        // Agregar evento para cerrar el formulario de pluma
+        document.getElementById('close-plume-form').addEventListener('click', function() {
+            document.getElementById('plume-form-container').style.display = 'none';
+        });
+
+        // Función para ajustar el tamaño del mapa
+        function adjustMapSize() {
+            var mapElement = document.getElementById('map');
+            var sidebarWidth = 250; // Ancho de la barra lateral
+            
+            mapElement.style.width = `calc(100% - ${sidebarWidth}px)`;
+            map.invalidateSize();
+        }
+
+        // Llamar a adjustMapSize cuando se carga la página y cuando se redimensiona la ventana
+        window.addEventListener('load', adjustMapSize);
+        window.addEventListener('resize', adjustMapSize);
+
+
+        var ProfessionalNorthArrow = L.Control.extend({
+            options: {
+                position: 'bottomright'
+            },
+
+            onAdd: function (map) {
+                var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-north-arrow');
+                container.style.backgroundColor = 'white';
+                container.style.width = '40px';
+                container.style.height = '40px';
+                container.style.cursor = 'default';
+                container.style.marginBottom = '10px'; // Añadimos margen inferior
+
+                var svgString = `
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="38" height="38">
+                        <polygon points="50,2 70,50 50,38 30,50" fill="#333"/>
+                        <text x="50" y="95" font-family="Arial, sans-serif" font-size="40" font-weight="bold" text-anchor="middle" fill="#333">N</text>
+                    </svg>
+                `;
+
+                container.innerHTML = svgString;
+
+                return container;
+            }
+        });
+
+        // Luego añade la flecha del norte
+        map.addControl(new ProfessionalNorthArrow());
+
+        // Añade este evento después de que se cargue el DOM
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('mode-select').addEventListener('change', handleModeChange);
+            handleModeChange(); // Llamar a la función inicialmente para configurar el estado correcto
+        });
+
+        // Evento para que cuando borremos el form tambien se borre la gráfica
+        document.getElementById('data-form').onreset = function(event) {
+            var chartDiv = document.getElementById('myChart');
+            if (chartDiv && chartDiv.data) {
+                // Obtener el layout actual
+                var currentLayout = chartDiv.layout;
+                
+                // Crear un nuevo objeto de datos vacío
+                var emptyData = [];
+                
+                // Actualizar el gráfico con datos vacíos pero manteniendo el layout
+                Plotly.react(chartDiv, emptyData, currentLayout);
+            }
+        };
+
+        // Función para comprobar que hay Vel de Darcy y es válida
+        function updateDarcyVelRequirement() {
+            var layerSelect = document.getElementById('layer-select');
+            var darcyVelInput = document.getElementById('darcy_vel');
+            var plumeDarcyVelInput = document.getElementById('plume_darcy_vel');
+            var selectedLayer = layerSelect.value;
+            
+            if (selectedLayer === 'U1' || selectedLayer === 'U3') {
+                darcyVelInput.required = true;
+                plumeDarcyVelInput.required = true;
+                darcyVelInput.dataset.layer = selectedLayer;
+                plumeDarcyVelInput.dataset.layer = selectedLayer;
+            } else {
+                darcyVelInput.required = false;
+                plumeDarcyVelInput.required = false;
+                darcyVelInput.dataset.layer = '';
+                plumeDarcyVelInput.dataset.layer = '';
+            }
+        }
+
+    </script>
+</body>
+</html>
